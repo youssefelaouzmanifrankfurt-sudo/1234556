@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Importierte Produkte</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/scraper.css"> <style>
+        .tech-list { font-size: 0.8rem; color: #888; margin-top: 10px; max-height: 100px; overflow-y: auto; }
+        .img-gallery { display: flex; gap: 5px; overflow-x: auto; margin-bottom: 10px; }
+        .mini-img { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; border: 1px solid #333; }
+    </style>
+</head>
+<body>
+    <%- include('partials/nav') %>
+
+    <div class="main-content">
+        <h1 style="text-align:center;">📦 Importierte Produkte</h1>
+        <div id="results-grid" class="results-grid"></div>
+    </div>
+
+    <script>
+        const socket = io();
+        socket.emit('get-imported-products');
+
+        socket.on('update-imported-list', (list) => {
+            const grid = document.getElementById('results-grid');
+            grid.innerHTML = '';
+
+            if(list.length === 0) {
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#666;">Noch nichts importiert.</div>';
+                return;
+            }
+
+            list.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                
+                // Bilder Vorschau
+                let imagesHtml = '';
+                if(p.images && p.images.length) {
+                    imagesHtml = `<div class="img-gallery">
+                        ${p.images.slice(0,4).map(src => `<img src="${src}" class="mini-img">`).join('')}
+                    </div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="p-img-wrap">
+                        <img src="${p.images[0] || p.img}" class="p-img">
+                    </div>
+                    <div class="p-body">
+                        ${imagesHtml}
+                        <div class="p-title">${p.title}</div>
+                        <div class="p-price">${p.price}</div>
+                        <div style="font-size:0.8rem; color:#aaa; margin-bottom:10px;">Energie: ${p.energyLabel || '-'}</div>
+                        <button class="btn-compare" style="background:#331111; border-color:#551111; color:#ff5555;" onclick="deleteItem('${p.url}')">Löschen</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        });
+
+        function deleteItem(url) {
+            if(confirm("Löschen?")) socket.emit('delete-imported', url);
+        }
+    </script>
+</body>
+</html>

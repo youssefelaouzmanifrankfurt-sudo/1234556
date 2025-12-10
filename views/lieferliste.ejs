@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Lieferliste</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/css/dashboard.css"> 
+
+    <style>
+        /* Damit die Tabelle den ganzen Platz nutzt */
+        body, html { height: 100%; margin: 0; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* Container für die Google Tabelle */
+        .iframe-container {
+            flex: 1; 
+            width: 100%;
+            background: #151515;
+            border-top: 1px solid #333;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <%- include('partials/nav') %>
+
+    <div class="iframe-container">
+        <iframe src="https://docs.google.com/spreadsheets/d/1qVk0AJibWcgPs4IoL0aN0PebGtxMfyyxyHw71GfEC4w/edit?gid=0#gid=0"></iframe>
+    </div>
+
+</body>
+</html>

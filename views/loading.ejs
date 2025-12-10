@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Boot</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #050505;
+            color: #10b981;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .terminal {
+            width: 500px;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 10px;
+            background: #0a0a0a;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+        }
+
+        .header {
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            display: flex; justify-content: space-between;
+            color: #666; font-size: 0.8rem;
+        }
+
+        .log-area {
+            height: 100px;
+            display: flex; flex-direction: column; justify-content: flex-end;
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+        
+        .current-step { color: #fff; font-weight: bold; margin-bottom: 5px; }
+
+        /* Ladebalken */
+        .progress-container {
+            width: 100%; height: 6px; background: #222; border-radius: 3px; overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%; width: 0%; background: #10b981;
+            transition: width 0.3s ease-out;
+            box-shadow: 0 0 10px #10b981;
+        }
+
+        .blink { animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div class="terminal">
+        <div class="header">
+            <span>NEONLINK SERVER OS</span>
+            <span>v1.0.4</span>
+        </div>
+
+        <div class="log-area">
+            <div id="status-text" class="current-step">> Initialisiere Verbindung...</div>
+        </div>
+
+        <div class="progress-container">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        
+        <div style="margin-top:10px; font-size:0.8rem; color:#555;">
+            Systemstatus: <span id="percent">0%</span> <span class="blink">_</span>
+        </div>
+    </div>
+
+    <script>
+        const statusText = document.getElementById('status-text');
+        const progressBar = document.getElementById('progress-bar');
+        const percentText = document.getElementById('percent');
+
+        function checkStatus() {
+            fetch('/api/boot-status')
+                .then(response => response.json())
+                .then(data => {
+                    // UI Update
+                    statusText.innerText = `> ${data.step}`;
+                    progressBar.style.width = `${data.progress}%`;
+                    percentText.innerText = `${data.progress}%`;
+
+                    // Wenn fertig -> Reload zur Hauptseite
+                    if (data.isReady) {
+                        statusText.innerText = "> SYSTEM ONLINE. Lade Interface...";
+                        setTimeout(() => {
+                            window.location.reload(); // Lädt neu -> Server zeigt jetzt Dashboard
+                        }, 800);
+                    } else {
+                        // Weiter pollen
+                        setTimeout(checkStatus, 500);
+                    }
+                })
+                .catch(err => {
+                    statusText.innerText = "> Verbindung zum Server verloren...";
+                    statusText.style.color = "#ef4444";
+                    setTimeout(checkStatus, 2000);
+                });
+        }
+
+        // Start Polling
+        setTimeout(checkStatus, 500);
+    </script>
+</body>
+</html>

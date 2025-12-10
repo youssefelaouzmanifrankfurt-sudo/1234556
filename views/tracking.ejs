@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Aktions Tracking</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/css/tracking.css">
+</head>
+<body>
+
+    <div id="app-loader">
+        <div style="width: 50px; height: 50px; border: 3px solid rgba(16, 185, 129, 0.3); border-radius: 50%; border-top-color: #10b981; animation: spin 1s ease-in-out infinite;"></div>
+        <div style="margin-top: 20px; color: #10b981; font-weight: bold; letter-spacing: 1px;">LADE DATEN...</div>
+    </div>
+
+    <%- include('partials/nav') %>
+
+    <div class="main-content">
+        <div class="header-row">
+            <h2>TRACKING & FAVORITEN</h2>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="startFullScan()">
+                    <span>🌍</span> Kompletten Account scannen
+                </button>
+                <button class="btn" onclick="location.reload()">
+                    <span>⟳</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="progress-wrapper" class="progress-wrapper">
+            <div class="progress-container">
+                <div id="progress-bar" class="progress-bar"></div>
+                <div id="progress-text" class="progress-text">Initialisiere...</div>
+            </div>
+        </div>
+
+        <div id="grid" class="grid">
+            </div>
+    </div>
+
+    <script src="/js/tracking.js"></script>
+</body>
+</html>

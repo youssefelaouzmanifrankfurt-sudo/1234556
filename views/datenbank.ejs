@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Datenbank</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/datenbank.css">
+    <link rel="stylesheet" href="/css/nav.css">
+</head>
+<body>
+
+    <%- include('partials/nav') %>
+
+    <div class="main-content">
+        
+        <div class="header-area">
+            <div class="header-title">
+                <h1>🗄️ Anzeigen Datenbank</h1>
+                <div class="header-subtitle">Alle importierten und erstellten Inserate</div>
+            </div>
+            <div style="display:flex; gap:20px; font-weight:bold; color:#94a3b8;">
+                <div>Gesamt: <span id="stat-total" style="color:white;">0</span></div>
+                <div>Aktiv: <span id="stat-active" style="color:#10b981;">0</span></div>
+            </div>
+        </div>
+
+        <div class="controls-bar">
+            <div style="display:flex; align-items:center;">
+                <span style="margin-right:10px;">🔍</span>
+                <input type="text" id="inp-search" class="search-input" placeholder="Titel suchen..." onkeyup="window.filterDB()">
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-left:15px; flex-wrap:wrap;">
+                
+                <select id="filter-status" class="search-input" onchange="filterAds()" style="width:auto; cursor:pointer;">
+                    <option value="all">Status: Alle</option>
+                    <option value="active">🟢 Nur Aktive</option>
+                    <option value="paused">🟠 Pausiert</option>
+                    <option value="draft">🟡 Entwürfe</option>
+                    <option value="stock">🏠 Im Lager</option>
+                    <option value="deleted">🔴 Gelöscht</option>
+                </select>
+
+                <select id="filter-time" class="search-input" onchange="filterAds()" style="width:auto; cursor:pointer;">
+                    <option value="all">Zeit: Alle</option>
+                    <option value="1m">⏳ Älter als 1 Monat</option>
+                    <option value="2m">⏳ Älter als 2 Monate</option>
+                    <option value="3m">⏳ Älter als 3 Monate</option>
+                </select>
+
+                <select id="sort-order" class="search-input" onchange="sortAds()" style="width:auto; cursor:pointer;">
+                    <option value="date_desc">📅 Neueste zuerst</option>
+                    <option value="date_asc">📅 Älteste zuerst</option>
+                    <option value="views_desc">🔥 Meiste Klicks</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="progress-container" class="progress-container" style="display:none;">
+            <div id="progress-bar" class="progress-bar"></div>
+            <div id="progress-text" class="progress-text">Scan läuft...</div>
+        </div>
+        
+        <div style="text-align:right; margin-bottom:15px;">
+             <button id="btn-scan" onclick="startScrape()" class="btn btn-primary" style="display:inline-block;">🔄 Scan Starten</button>
+             <button onclick="deleteInactiveAds()" class="btn btn-danger" title="Löscht alles außer Active & Lager">🧹 Aufräumen</button>
+        </div>
+
+        <div id="db-grid" class="db-grid">
+            <div style="grid-column:1/-1; text-align:center; padding:50px; color:#666;">Lade Daten...</div>
+        </div>
+
+    </div>
+
+    <div id="edit-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2>Anzeige bearbeiten</h2>
+            <input type="hidden" id="edit-id">
+            <label>Titel</label>
+            <input type="text" id="edit-title" class="modal-input">
+            <label>Preis</label>
+            <input type="text" id="edit-price" class="modal-input">
+            <label>Interne Notiz</label>
+            <textarea id="edit-note" class="modal-input" style="height:80px;"></textarea>
+            <div class="modal-actions">
+                <button onclick="closeModal('edit-modal')" class="btn" style="background:#333; color:white;">Abbrechen</button>
+                <button onclick="saveEdit()" class="btn btn-primary">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="qr-modal" class="modal-overlay" onclick="closeModal('qr-modal')">
+        <div class="modal-box" style="text-align:center; width:300px;" onclick="event.stopPropagation()">
+            <h2>QR Code</h2>
+            <div id="qr-container" style="margin:20px 0; background:white; padding:10px; border-radius:8px; display:inline-block;"></div>
+            <div id="qr-text" style="color:#aaa; font-size:0.9rem; margin-bottom:20px;"></div>
+            <button onclick="closeModal('qr-modal')" class="btn" style="width:100%;">Schließen</button>
+        </div>
+    </div>
+
+    <script src="/js/datenbank.js"></script>
+</body>
+</html>

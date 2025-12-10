@@ -1,0 +1,181 @@
+/* public/css/aufgaben.css */
+:root {
+    --bg-body: #050505;
+    --bg-card: #111;
+    --accent: #10b981;
+    --accent-glow: rgba(16, 185, 129, 0.2);
+    --urgent: #ef4444;
+    --border: #222;
+    --text-primary: #f3f4f6;
+    --text-sec: #888;
+}
+
+* { box-sizing: border-box; outline: none; }
+
+body {
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-body); color: var(--text-primary);
+    min-height: 100vh; display: flex; flex-direction: column;
+}
+
+/* LAYOUT */
+.container {
+    max-width: 1200px;
+    margin: 0 auto; padding: 30px; width: 100%;
+    display: grid; grid-template-columns: 300px 1fr; gap: 30px;
+}
+
+/* LINKE SPALTE: EINGABE */
+.input-panel {
+    background: var(--bg-card);
+    padding: 25px; border-radius: 16px;
+    border: 1px solid var(--border); height: fit-content;
+    position: sticky; top: 90px;
+}
+
+h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 20px; }
+
+.form-group { margin-bottom: 15px; }
+label { display: block; color: var(--text-sec); font-size: 0.85rem; margin-bottom: 5px; }
+
+input, textarea {
+    width: 100%;
+    background: #050505; border: 1px solid #333;
+    color: white; padding: 12px; border-radius: 8px;
+    font-family: inherit; font-size: 0.95rem; transition: 0.3s;
+}
+input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+.btn-add {
+    width: 100%;
+    background: var(--accent); color: black; font-weight: bold;
+    padding: 12px; border: none; border-radius: 8px; cursor: pointer;
+    transition: 0.2s; margin-top: 10px;
+}
+.btn-add:hover { transform: translateY(-2px); box-shadow: 0 5px 15px var(--accent-glow); }
+
+/* RECHTE SPALTE: LISTE */
+.task-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* TASK CARD */
+.task-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px; transition: 0.3s;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+}
+.task-card:hover { transform: translateY(-3px); border-color: #444; }
+
+.task-card::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background: var(--urgent);
+}
+.task-card.done::before { background: var(--accent); } 
+.task-card.done { opacity: 0.7; }
+
+.task-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.8rem; color: var(--text-sec); }
+.task-body { font-size: 1.1rem; line-height: 1.5; margin-bottom: 20px; flex: 1; }
+
+.task-footer { 
+    border-top: 1px solid #222;
+    padding-top: 15px; 
+    display: flex; justify-content: space-between; align-items: center;
+}
+
+.status-badge {
+    font-size: 0.75rem;
+    padding: 4px 10px; border-radius: 20px;
+    font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.status-open { background: rgba(239, 68, 68, 0.1); color: var(--urgent); }
+
+.btn-complete {
+    background: #222;
+    color: white; border: 1px solid #333;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+    transition: 0.2s;
+}
+.btn-complete:hover { background: var(--accent); color: black; border-color: var(--accent); }
+
+.btn-delete {
+    background: transparent;
+    border: none; color: #444; cursor: pointer;
+    font-size: 1.2rem; margin-left: 10px;
+}
+.btn-delete:hover { color: var(--urgent); }
+
+.done-info { font-size: 0.8rem; color: var(--text-sec); font-style: italic; }
+
+/* CHAT LINK BUTTON */
+.chat-link { 
+    display: inline-flex;
+    align-items: center; gap: 5px;
+    margin-top: 10px; font-size: 0.8rem; color: var(--accent); 
+    text-decoration: none; border: 1px solid #333; padding: 6px 12px;
+    border-radius: 6px; background: #151515; transition:0.2s;
+    width: fit-content;
+}
+.chat-link:hover { background: #222; border-color: var(--accent); transform: translateX(3px); }
+
+/* TASK UPDATES (Notizen/Verlauf) - NEU */
+.task-updates {
+    margin-top: 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 0.85rem;
+    border-left: 3px solid var(--accent);
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.task-update-item {
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    line-height: 1.4;
+}
+.task-update-item:last-child { border-bottom: none; }
+
+/* INPUT FÜR UPDATE - NEU */
+.update-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.update-input {
+    flex: 1;
+    background: #151515;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 0.9rem;
+    color: white;
+}
+.update-input:focus { border-color: var(--accent); }
+
+.btn-update {
+    background: #222;
+    border: 1px solid #333;
+    color: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 36px;
+    display: flex; align-items: center; justify-content: center;
+    transition: 0.2s;
+    font-size: 1rem;
+}
+.btn-update:hover { background: var(--accent); color: black; border-color: var(--accent); }
+
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+.task-card { animation: popIn 0.3s ease-out; }

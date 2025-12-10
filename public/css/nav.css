@@ -1,0 +1,74 @@
+/* public/css/nav.css */
+
+/* Global Nav Styles (Basis) */
+.global-nav {
+    height: 65px; background: rgba(10, 10, 10, 0.95); border-bottom: 1px solid #222;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 30px;
+    position: sticky; top: 0; z-index: 1000; backdrop-filter: blur(12px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5); flex-shrink: 0;
+}
+
+.global-brand { 
+    font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; color: #fff; 
+    text-decoration: none; display: flex; align-items: center; gap: 10px; transition: opacity 0.2s; 
+}
+.global-brand:hover { opacity: 0.8; }
+.brand-accent { color: #10b981; }
+.status-indicator { 
+    width: 8px; height: 8px; background: #10b981; border-radius: 50%; 
+    box-shadow: 0 0 8px #10b981; animation: pulse-dot 2s infinite; 
+}
+
+.global-links { display: flex; gap: 5px; }
+
+.g-link { 
+    color: #888; text-decoration: none; font-weight: 500; font-size: 0.9rem; 
+    padding: 8px 16px; border-radius: 8px; transition: all 0.2s; 
+    display: flex; align-items: center; gap: 8px; position: relative; /* Wichtig für Badge */
+}
+.g-link:hover { color: white; background: rgba(255,255,255,0.05); }
+.g-link.active { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+
+/* BADGES (Die roten Kreise) */
+.nav-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: bold;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #111; /* Macht einen kleinen Rand zum Icon */
+    transform: scale(0);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    padding: 0 4px;
+}
+
+.nav-badge.visible {
+    transform: scale(1);
+}
+
+/* Aufgaben Badge (Orange statt Rot zur Unterscheidung) */
+.nav-badge.task-badge {
+    background: #f59e0b; 
+}
+
+@keyframes pulse-dot { 
+    0% { opacity: 0.5; box-shadow: 0 0 0px #10b981; } 
+    50% { opacity: 1; box-shadow: 0 0 10px #10b981; } 
+    100% { opacity: 0.5; box-shadow: 0 0 0px #10b981; } 
+}
+
+@media (max-width: 768px) { 
+    .global-nav { padding: 0 10px; } 
+    .g-link span.link-text { display: none; } 
+    .brand-text { display: none; } 
+    .g-link { padding: 10px; }
+    .nav-badge { top: 5px; right: 5px; }
+}

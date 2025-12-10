@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Produkt Scraper</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/scraper.css">
+    <style>
+        /* Style für das Auswahl-Menü */
+        .search-select {
+            background: #151515;
+            border: 1px solid #333; 
+            color: white; 
+            padding: 15px; 
+            border-radius: 12px; 
+            font-size: 1.1rem; 
+            cursor: pointer;
+            outline: none;
+            font-weight: bold;
+        }
+        .search-select:focus { border-color: #10b981; }
+        option { background: #111; }
+    </style>
+</head>
+<body>
+
+    <%- include('partials/nav') %>
+
+    <div class="main-content">
+        
+        <div style="text-align:center; margin-bottom:40px;">
+            <h1 style="font-size:2rem; margin-bottom:10px;">Produkt Detektiv 🕵️</h1>
+            <p style="color:#888;">Finde Produkte, vergleiche Preise und importiere Daten.</p>
+        </div>
+
+        <div class="search-section">
+            <select id="source-select" class="search-select">
+                <option value="Otto">🔴 Otto.de</option>
+                <option value="Idealo">🟠 Idealo.de</option>
+                <option value="Amazon">⚫ Amazon.de</option>
+                <option value="Baur">🔵 Baur.de</option>
+                <option value="Expert">🔵 Expert.de</option>
+            </select>
+
+            <input type="text" id="search-input" class="search-input" placeholder="Produktname (z.B. iPhone 15)..." autocomplete="off">
+            <button class="btn-search" onclick="searchProduct()">Suchen</button>
+        </div>
+
+        <div id="loader" class="loader">
+            <div style="font-size:2rem; margin-bottom:10px;">⏳</div>
+            Suche läuft...
+        </div>
+
+        <div id="results-grid" class="results-grid"></div>
+        
+        <div style="text-align:center; margin-top:30px;">
+            <button id="btn-load-more" class="btn-compare" style="width:auto; padding:10px 30px; display:none;" onclick="loadMore()">
+                ⬇ Mehr laden
+            </button>
+        </div>
+
+    </div>
+
+    <div id="compare-modal" class="modal-overlay">
+        <div class="compare-modal">
+            <div class="modal-header">
+                <h2 style="margin:0;">Analyse & Vergleich</h2>
+                <button onclick="closeModal()" style="background:none; border:none; color:#666; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-content"></div>
+            <div class="modal-footer">
+                <button onclick="closeModal()" style="background:transparent; border:1px solid #333; color:#888; padding:10px 20px; border-radius:8px; cursor:pointer;">Abbrechen</button>
+                <button id="btn-save" onclick="saveProduct()" style="background:#10b981; border:none; color:black; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer; display:none;">Importieren</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/scraper.js"></script>
+</body>
+</html>

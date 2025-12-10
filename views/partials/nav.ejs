@@ -1,0 +1,166 @@
+<style>
+    /* --- NAVIGATION DESIGN --- */
+    .global-nav {
+        height: 65px;
+        background: rgba(10, 10, 10, 0.95); border-bottom: 1px solid #222;
+        display: flex; align-items: center; justify-content: space-between; padding: 0 30px;
+        position: sticky;
+        top: 0; z-index: 1000; backdrop-filter: blur(12px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5); flex-shrink: 0;
+    }
+
+    .global-brand { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; color: #fff; text-decoration: none; display: flex; align-items: center;
+    gap: 10px; transition: opacity 0.2s; }
+    .global-brand:hover { opacity: 0.8; }
+    .brand-accent { color: #10b981; }
+    .status-indicator { width: 8px; height: 8px; background: #10b981;
+    border-radius: 50%; box-shadow: 0 0 8px #10b981; animation: pulse-dot 2s infinite; }
+
+    .global-links { display: flex; gap: 5px; }
+
+    .g-link { 
+        color: #888; text-decoration: none;
+        font-weight: 500; font-size: 0.9rem; 
+        padding: 8px 16px; border-radius: 8px; transition: all 0.2s; 
+        display: flex; align-items: center; gap: 8px; 
+        position: relative; /* WICHTIG für den Badge! */
+    }
+    .g-link:hover { color: white; background: rgba(255,255,255,0.05); }
+    .g-link.active { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+
+    /* --- BADGES (Die roten Kreise) --- */
+    .nav-badge {
+        position: absolute;
+        top: 3px; 
+        right: 3px;
+        background: #ef4444; /* Rot für Chat */
+        color: white;
+        font-size: 0.65rem;
+        font-weight: bold;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 9px; /* Pill Shape */
+        display: flex; align-items: center; justify-content: center;
+        border: 2px solid #0a0a0a; /* Rand zur Trennung */
+        transform: scale(0); /* Unsichtbar starten */
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        padding: 0 4px;
+        pointer-events: none;
+    }
+    .nav-badge.visible { transform: scale(1); }
+    
+    /* Aufgaben Badge (Orange) */
+    .nav-badge.task-badge { background: #f59e0b; }
+
+    @keyframes pulse-dot { 
+        0% { opacity: 0.5; box-shadow: 0 0 0px #10b981; } 
+        50% { opacity: 1; box-shadow: 0 0 10px #10b981; } 
+        100% { opacity: 0.5; box-shadow: 0 0 0px #10b981; } 
+    }
+    
+    @media (max-width: 768px) { 
+        .global-nav { padding: 0 15px; } 
+        .g-link span { display: none; } 
+        .g-link .nav-badge { top: 5px; right: 5px; }
+        .brand-text { display: none; } 
+    }
+</style>
+
+<nav class="global-nav">
+    <a href="/" class="global-brand">
+        <div class="status-indicator"></div>
+        <div class="brand-text">NEON<span class="brand-accent">LINK</span></div>
+    </a>
+
+    <div class="global-links">
+        <a href="/" class="g-link"><span>🏠</span> Dashboard</a>
+        
+        <a href="/chat" class="g-link" id="link-chat">
+            <span>💬</span> Chat
+            <div id="badge-chat" class="nav-badge">0</div>
+        </a>
+
+        <a href="/aufgaben" class="g-link" id="link-tasks">
+            <span>📋</span> Aufgaben
+            <div id="badge-tasks" class="nav-badge task-badge">0</div>
+        </a>
+
+        <a href="/lieferliste" class="g-link"><span>🚚</span> Lieferliste</a>
+        
+        <a href="/lager" class="g-link"><span>🏭</span> Lager</a>
+        <a href="/datenbank" class="g-link"><span>📦</span> Datenbank</a>
+        <a href="/tracking" class="g-link"><span>📈</span> Tracking</a>
+        <a href="/scraper" class="g-link"><span>🛍️</span> Scraper</a>
+        <a href="/imported" class="g-link"><span>📥</span> Ablage</a>
+        <a href="/settings" class="g-link"><span>⚙️</span> Vorlagen</a>
+    </div>
+</nav>
+
+<script>
+    (function() {
+        // 1. Active State setzen
+        const path = window.location.pathname;
+        document.querySelectorAll('.g-link').forEach(link => {
+            const href = link.getAttribute('href');
+            if (path === href || (href !== '/' && path.startsWith(href))) {
+                link.classList.add('active');
+            }
+        });
+
+        // 2. Socket Verbindung prüfen oder herstellen
+        const navSocket = window.socket || (typeof io !== 'undefined' ? io() : null);
+        if (navSocket && !window.socket) window.socket = navSocket;
+
+        if (navSocket) {
+            // SOUND (Deine Datei)
+            const notifSound = new Audio("/sounds/notification.mp3");
+            notifSound.volume = 0.5;
+
+            let lastCounts = { chat: 0, tasks: 0 };
+
+            // EVENTS
+            navSocket.on('update-conversations', (data) => {
+                const chats = Array.isArray(data) ? data : data.chats;
+                let newMsg = 0;
+                if (chats) {
+                    chats.forEach(c => { if(c.hasNewMessage) newMsg++; });
+                }
+                updateBadge('chat', newMsg);
+            });
+
+            navSocket.on('update-tasks', (tasks) => {
+                if (tasks) {
+                    const open = tasks.filter(t => t.status === 'offen').length;
+                    updateBadge('tasks', open);
+                }
+            });
+
+            function updateBadge(type, count) {
+                const badge = document.getElementById(`badge-${type}`);
+                if(badge) {
+                    if(count > 0) {
+                        badge.innerText = count;
+                        badge.classList.add('visible');
+                        
+                        // Sound abspielen bei Erhöhung
+                        if(count > lastCounts[type]) {
+                            notifSound.currentTime = 0;
+                            notifSound.play().catch(e => {});
+                        }
+                    } else {
+                        badge.classList.remove('visible');
+                    }
+                    lastCounts[type] = count;
+                }
+            }
+            
+            // Sound freischalten
+            document.body.addEventListener('click', () => {
+                notifSound.play().then(() => {
+                    notifSound.pause();
+                    notifSound.currentTime = 0;
+                }).catch(() => {});
+            }, { once: true });
+        }
+    })();
+</script>

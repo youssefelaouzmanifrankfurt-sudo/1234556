@@ -1,0 +1,71 @@
+/* public/css/settings.css */
+:root {
+    --bg: #050505; --card: #111; --border: #222; --text: #eee; 
+    --accent: #10b981; --accent-glow: rgba(16, 185, 129, 0.2); 
+}
+
+body { 
+    background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; 
+    margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh;
+}
+
+.container { max-width: 1000px; margin: 0 auto; width: 100%; padding: 40px 20px; }
+
+h1 { text-align: center; margin-bottom: 40px; font-size: 2.5rem; }
+
+.card { 
+    background: var(--card); 
+    border: 1px solid var(--border); 
+    padding: 30px; 
+    border-radius: 16px; 
+    margin-bottom: 30px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+h2 { margin-top: 0; font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 20px; color: white; }
+p { color: #888; font-size: 0.95rem; margin-bottom: 25px; }
+
+label { display: block; color: #bbb; margin-bottom: 10px; font-weight: 600; font-size: 0.95rem; }
+
+/* --- EINGABEFELDER (GRÖSSER!) --- */
+textarea, input {
+    width: 100%; background: #0a0a0a; border: 1px solid #333; color: #ddd;
+    padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace;
+    font-size: 1rem; margin-bottom: 20px; transition: 0.2s; line-height: 1.5;
+}
+textarea:focus, input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
+
+/* Spezifische Höhen */
+#design-prefix { min-height: 180px; } /* Rahmen Box */
+#chat-paypal, #chat-bank, #chat-contact { min-height: 140px; } /* Chat Boxen */
+#template-editor { min-height: 600px; font-size: 1.1rem; } /* Haupt-Editor RIESIG */
+
+/* Tags Buttons */
+.tags { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+.tag { 
+    background: #1a1a1a; color: var(--accent); padding: 8px 15px; border-radius: 6px; 
+    font-size: 0.9rem; cursor: pointer; border: 1px solid #333; transition: 0.2s; font-weight: 600;
+}
+.tag:hover { border-color: var(--accent); background: rgba(16, 185, 129, 0.1); transform: translateY(-2px); }
+
+/* Tabs */
+.nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 20px; }
+.tab { 
+    padding: 12px 30px; background: #151515; border: 1px solid #333; color: #888;
+    border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: 600; font-size: 1rem;
+}
+.tab:hover { background: #222; color: white; }
+.tab.active { background: var(--accent); color: black; border-color: var(--accent); }
+
+/* Save Button */
+.btn-save {
+    background: var(--accent); color: black; border: none; padding: 15px 50px;
+    border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1.1rem;
+    display: block; margin-left: auto; margin-top: 20px; transition: 0.2s;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+}
+.btn-save:hover { box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); transform: translateY(-2px); }
+
+#status-msg { text-align: right; color: #666; font-size: 0.85rem; height: 20px; margin-top: -15px; font-family: monospace; }
+
+hr { border: 0; border-top: 1px solid #333; margin: 30px 0; }

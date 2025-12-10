@@ -1,0 +1,26 @@
+// src/socket/stockHandler.js
+const stockService = require('../services/stockService');
+// Wir brauchen später Zugriff auf die Ads DB zum Vergleichen
+const storage = require('../utils/storage');
+
+module.exports = (io, socket) => {
+
+    // Daten senden
+    socket.on('get-stock', () => {
+        const stock = stockService.getAll();
+        // Hier können wir später den Abgleich mit global.adsDB machen
+        socket.emit('update-stock', stock);
+    });
+
+    // Manuelle Änderung (+ / -)
+    socket.on('update-stock-qty', (data) => {
+        const list = stockService.updateQuantity(data.id, data.delta);
+        io.emit('update-stock', list);
+    });
+
+    // Löschen
+    socket.on('delete-stock-item', (id) => {
+        const list = stockService.delete(id);
+        io.emit('update-stock', list);
+    });
+};

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Smart Lager</title>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script> 
+
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/lager.css">
+    
+    <style>
+        .price-result-list { max-height: 200px; overflow-y: auto; margin-bottom: 15px; background: #0f172a; border-radius: 8px; display: none; border: 1px solid #334155; }
+        .price-item { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #334155; cursor: pointer; }
+        .price-item:hover { background: #1e293b; }
+        .price-item img { width: 40px; height: 40px; object-fit: contain; margin-right: 10px; background: white; border-radius: 4px; }
+        .price-source { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; padding: 2px 5px; border-radius: 4px; margin-right: 5px; }
+        .src-otto { background: #ff0000; color: white; }
+        .src-baur { background: #004e9e; color: white; }
+        .src-idealo { background: #f59e0b; color: black; }
+        .src-amazon { background: #ff9900; color: black; }
+        .traffic-light { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .light-green { background-color: #10b981; box-shadow: 0 0 5px #10b981; }
+        .light-yellow { background-color: #f59e0b; animation: pulse 2s infinite; }
+        .light-red { background-color: #ef4444; }
+        .light-grey { background-color: #64748b; opacity: 0.5; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; }
+    </style>
+</head>
+<body>
+
+    <%- include('partials/nav') %>
+
+    <div class="main-content">
+        <div class="header-grid">
+            <div>
+                <h1 style="margin:0;">📦 Smart Lager</h1>
+                <div style="color:#94a3b8; font-size:0.9rem;">Bestand & Preise</div>
+            </div>
+           
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <span class="stat-val" id="stat-total">0</span>
+                    <span class="stat-label">Artikel</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="background:#1e293b; padding:10px; border-radius:10px; margin-bottom:15px; display:flex;">
+            <input type="text" id="manual-code-input" style="flex:1; background:transparent; border:none; color:white; outline:none;" placeholder="SKU tippen oder mit Handscanner...">
+            <button onclick="window.triggerManualScan()" class="btn-mini">Go</button>
+        </div>
+
+        <div class="controls-area" style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn-action btn-add" onclick="openCreateModal()"><span>➕</span> Neu & Preis-Check</button>
+            <button class="btn-action" onclick="window.startQRScanner()" style="background:#3b82f6;"><span>📱</span> QR-Scan</button>
+            <button class="btn-action btn-scan" onclick="window.triggerCamera()"><span>📸</span> Modell-Scan</button>
+            
+            <input type="file" id="cam-input" accept="image/*" capture="environment" onchange="window.startCropping(this)" style="display:none;">
+            <input type="text" id="inp-search" class="search-input" placeholder="Suchen..." onkeyup="window.filterStock()" style="flex:1;">
+        </div>
+
+        <div id="stock-grid" class="stock-grid">
+            <div style="grid-column:1/-1; text-align:center; padding:50px; color:#64748b;">Lade Lagerbestand...</div>
+        </div>
+    </div>
+
+    <div id="item-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 class="modal-title" id="modal-title">Artikel anlegen</h2>
+            <input type="hidden" id="edit-id">
+            
+            <div class="form-group">
+                <label class="form-label">Modell / Name</label>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="inp-title" class="form-input" placeholder="z.B. Siemens WM14N228">
+                    <button class="btn-secondary" onclick="startPriceSearch()">🔍 Preis</button>
+                </div>
+            </div>
+
+            <div id="price-results" class="price-result-list">
+                <div style="padding:10px; text-align:center; color:#94a3b8;">Suche läuft...</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">SKU (Eigener Code)</label>
+                <input type="text" id="inp-sku" class="form-input" placeholder="Für Aufkleber (wird generiert)">
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                <div class="form-group">
+                    <label class="form-label">Neupreis (€)</label>
+                    <input type="number" id="inp-market-price" class="form-input" readonly style="opacity:0.6;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="color:#10b981;">Dein EK (45%)</label>
+                    <input type="number" id="inp-price" class="form-input" style="border-color:#10b981;">
+                </div>
+            </div>
+            
+            <input type="hidden" id="inp-source-url">
+            <input type="hidden" id="inp-source-name">
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                <div class="form-group"><label class="form-label">Lagerort</label><input type="text" id="inp-location" class="form-input" placeholder="Regal A1"></div>
+                <div class="form-group"><label class="form-label">Menge</label><input type="number" id="inp-qty" class="form-input" value="1"></div>
+            </div>
+
+            <div class="modal-actions" style="display:flex; justify-content: flex-end; align-items: center; gap: 10px;">
+                <button onclick="window.deleteItem()" class="btn-mini" style="background:#ef4444; color:white; margin-right:auto;">🗑️ Löschen</button>
+                <button onclick="closeAllModals()" class="btn-mini">Abbrechen</button>
+                <button onclick="saveItem()" class="btn-primary">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="print-modal" class="modal-overlay" style="z-index: 3000;">
+        <div class="modal-box" style="text-align:center; background:white; color:black; max-width:350px;">
+            <h2 style="margin:0; font-size:1.2rem; color:black;">Lager-Etikett</h2>
+            <div id="print-area" style="padding:20px; border:2px dashed #ccc; margin:15px 0;">
+                <h3 id="print-title" style="margin:0 0 10px 0; font-size:1rem; color:black;">Produktname</h3>
+                <img id="print-qr" src="" style="width:150px; height:150px;">
+                <div id="print-sku" style="font-family:monospace; font-size:1.2rem; font-weight:bold; margin-top:5px; color:black;">SKU-12345</div>
+                <div style="font-size:0.8rem; color:black;">Scan mich!</div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <button onclick="window.printLabel()" class="btn-primary" style="background:#000; color:white;">🖨️ Drucken</button>
+                <button onclick="closeAllModals()" class="btn-mini" style="background:#eee; color:black;">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="qr-scanner-modal" class="modal-overlay" style="z-index: 3000;">
+        <div class="modal-box" style="text-align:center; width: 100%; max-width: 500px;">
+            <h2 style="margin-bottom:15px;">QR Code Scannen</h2>
+            <div id="reader" style="width: 100%; min-height: 300px; background: black;"></div>
+            <button onclick="window.stopQRScanner()" class="btn-mini" style="width:100%; margin-top:15px;">Abbrechen</button>
+        </div>
+    </div>
+    
+    <%- include('partials/match_modals') %> 
+
+    <script src="/js/lager/ui.js"></script>
+    <script src="/js/lager/printer.js"></script>
+    <script src="/js/lager/scanner.js"></script>
+    <script src="/js/lager/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+/* public/css/datenbank.css */
+:root {
+    --bg-dark: #0f172a;
+    --bg-card: #1e293b;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #3b82f6; /* Blau */
+    --accent-green: #10b981;
+    --accent-orange: #f59e0b;
+    --accent-red: #ef4444;
+    --border: #334155;
+    --radius: 12px;
+}
+
+body {
+    background-color: var(--bg-dark); color: var(--text-main);
+    font-family: 'Outfit', sans-serif; margin: 0; padding-bottom: 100px;
+}
+.main-content { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+/* HEADER & FILTER */
+.header-area { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+h1 { margin: 0; font-size: 2rem; }
+.stats-row { color: var(--text-muted); font-size: 0.9rem; margin-top: 5px; }
+
+.controls-bar { 
+    display: grid; grid-template-columns: 1fr auto auto; gap: 15px; margin-bottom: 25px; 
+    background: var(--bg-card); padding: 15px; border-radius: var(--radius); border: 1px solid var(--border);
+}
+.search-input { background: #0f172a; border: 1px solid var(--border); color: white; padding: 10px 15px; border-radius: 8px; width: 100%; outline: none; font-size: 1rem; }
+
+/* BUTTONS */
+.btn { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); }
+.btn-danger:hover { background: var(--accent-red); color: white; }
+
+/* GRID SYSTEM (Das neue Design) */
+.db-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+.db-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; position: relative; transition: transform 0.2s; }
+.db-card:hover { transform: translateY(-3px); border-color: #475569; }
+
+.card-top { display: flex; gap: 15px; margin-bottom: 15px; }
+.card-img { width: 70px; height: 70px; border-radius: 8px; object-fit: cover; background: #333; border: 1px solid var(--border); }
+.card-info { flex: 1; min-width: 0; }
+.card-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white; }
+.card-meta { font-size: 0.8rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* BADGES */
+.badge { padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+.badge-active { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+.badge-draft { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+.badge-deleted { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+/* NEU: Lager Badge */
+.badge-stock { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.4); display: inline-flex; align-items: center; gap: 4px; }
+
+.card-stats { display: flex; gap: 15px; margin-top: auto; padding-top: 15px; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); }
+.card-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
+
+/* ICON BUTTONS */
+.btn-icon { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+.btn-icon:hover { background: #334155; color: white; }
+.btn-icon.del:hover { border-color: var(--accent-red); color: var(--accent-red); background: rgba(239, 68, 68, 0.1); }
+
+/* PROGRESS BAR (aus deiner alten Datei) */
+.progress-container { width: 100%; background: #1a1a1a; height: 25px; border-radius: 12px; overflow: hidden; margin-top: 20px; position: relative; display: none; border: 1px solid var(--border); }
+.progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+.progress-text { position: absolute; width: 100%; text-align: center; top: 0; line-height: 25px; font-size: 0.8rem; font-weight: bold; color: white; text-shadow: 0 1px 2px black; }
+
+/* MODALS (Übernommen und angepasst) */
+.modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 1000; display: none; align-items: center; justify-content: center; }
+.modal-box { background: var(--bg-card); width: 90%; max-width: 450px; padding: 30px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+.modal-box h2 { margin-top: 0; color: white; }
+.modal-input { width: 100%; background: #0f172a; border: 1px solid var(--border); color: white; padding: 12px; border-radius: 8px; margin-bottom: 15px; outline: none; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }

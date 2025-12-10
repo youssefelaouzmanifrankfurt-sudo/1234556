@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Importierte Produkte</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/scraper.css">
+    <link rel="stylesheet" href="/css/imported.css">
+    <style>
+        /* WICHTIG: Damit die Preview Boxen sichtbar sind */
+        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .detail-box { background: #151515; padding: 15px; border-radius: 8px; border: 1px solid #333; height: 150px; display: flex; flex-direction: column; }
+        .scroll-content { flex: 1; overflow-y: auto; font-size: 0.85rem; color: #ccc; line-height: 1.4; }
+        .box-label { color: #666; font-size: 0.7rem; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+        
+        /* Rechner */
+        .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #111; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
+        .calc-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .calc-val { font-weight: bold; font-size: 1.1rem; }
+        .calc-input { background: #222; border: 1px solid #444; color: white; padding: 8px; border-radius: 6px; width: 100px; text-align: right; font-weight: bold; }
+        .profit-val { font-size: 1.5rem; font-weight: 800; color: #10b981; }
+        .profit-val.loss { color: #ef4444; }
+    </style>
+</head>
+<body>
+
+    <%- include('partials/nav') %>
+
+    <div class="main-content">
+        <div style="text-align:center; margin-bottom:40px;">
+            <h1>📦 Deine Ablage</h1>
+            <p style="color:#888;">Hier siehst du alle gespeicherten Produkte.</p>
+        </div>
+        <div id="results-grid">
+            <div style="text-align:center; padding:50px; color:#666;">Lade Daten...</div>
+        </div>
+    </div>
+
+    <div id="upload-modal" class="modal-overlay">
+        <div class="compare-modal" style="width: 500px; height: auto; display: block;">
+            <div class="modal-header">
+                <h2 style="margin:0;">💰 Preis Kalkulation</h2>
+                <button onclick="closeUploadModal()" style="background:none; border:none; color:#666; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div class="modal-body" style="display:block; padding:25px;">
+                <div class="calc-grid">
+                    <div class="calc-row"><span>Otto Preis:</span> <span class="calc-val" id="calc-otto">0 €</span></div>
+                    <div class="calc-row"><span>Einkauf (45%):</span> <span class="calc-val" id="calc-buy" style="color:#f59e0b;">0 €</span></div>
+                </div>
+                <div style="background: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333;">
+                    <div class="calc-row"><span>Verkaufspreis:</span> <input type="number" id="calc-sell-input" class="calc-input" oninput="calculateProfit()"></div>
+                    <div class="calc-row" style="font-size:0.8rem; color:#666;"><span>- 19% MwSt:</span> <span id="calc-tax">0 €</span></div>
+                    <div class="calc-row" style="border-top:1px solid #333; padding-top:10px; margin-top:10px;">
+                        <span>Gewinn:</span> <span class="profit-val" id="calc-profit">0 €</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeUploadModal()" style="background:transparent; border:1px solid #333; color:#888; padding:10px 20px; border-radius:8px; cursor:pointer;">Abbrechen</button>
+                <button onclick="confirmUpload()" style="background:#10b981; border:none; color:black; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">🚀 Erstellen</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentProduct = null;
+        let purchasePrice = 0;
+
+        socket.emit('get-imported-products');
+
+        socket.on('update-imported-list', (list) => {
+            const grid = document.getElementById('results-grid');
+            grid.innerHTML = '';
+            if(!list || list.length === 0) { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:#666;">Ablage leer.</div>'; return; }
+
+            list.reverse().forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'import-card';
+                
+                // Bilder
+                let mainImg = (p.images && p.images.length > 0) ? p.images[0] : (p.img || 'https://via.placeholder.com/300');
+                let galleryHtml = '';
+                if(p.images && p.images.length > 1) {
+                    galleryHtml = '<div class="gallery-grid" style="margin-top:10px;">';
+                    p.images.slice(0, 4).forEach(src => { galleryHtml += `<img src="${src}" class="thumb-img" onclick="window.open('${src}')">`; });
+                    galleryHtml += '</div>';
+                }
+
+                // Tech Daten & Beschreibung (Preview Fix)
+                let techContent = 'Keine Daten';
+                if (p.techData) {
+                    if (Array.isArray(p.techData)) techContent = '<ul>' + p.techData.slice(0,8).map(t => `<li>${t}</li>`).join('') + '</ul>';
+                    else techContent = p.techData;
+                }
+
+                let descContent = 'Keine Beschreibung';
+                if (p.description) descContent = p.description.substring(0, 300) + '...';
+
+                card.innerHTML = `
+                    <div class="media-col">
+                        <div class="main-img-wrap"><img src="${mainImg}" class="main-img"></div>
+                        ${galleryHtml}
+                    </div>
+                    <div class="info-col">
+                        <div class="header-row"><h2>${p.title}</h2><div class="prod-price">${p.price || '0 €'}</div></div>
+                        
+                        <div class="details-grid">
+                            <div class="detail-box"><div class="box-label">Beschreibung</div><div class="scroll-content">${descContent}</div></div>
+                            <div class="detail-box"><div class="box-label">Daten</div><div class="scroll-content">${techContent}</div></div>
+                        </div>
+
+                        <div class="card-footer">
+                            <button class="btn-compare" style="background:var(--accent); color:black; border:none;" onclick='openUploadModal(${JSON.stringify(p).replace(/'/g, "&#39;")})'>⬆️ Entwurf</button>
+                            <button class="btn-del" onclick="deleteItem('${p.url}')">🗑️</button>
+                        </div>
+                    </div>`;
+                grid.appendChild(card);
+            });
+        });
+
+        function deleteItem(url) { if(confirm("Löschen?")) socket.emit('delete-imported', url); }
+
+        // --- PREIS RECHNER FIX ---
+        function openUploadModal(product) {
+            currentProduct = product;
+            let ottoPrice = 0;
+            
+            if (product.price) {
+                let raw = product.price;
+                // Fall 1: Deutscher Preis "1.299,00 €" -> Tausender Punkt weg, Komma zu Punkt
+                if (raw.includes(',')) {
+                    raw = raw.replace(/\./g, '').replace(',', '.');
+                }
+                // Fall 2: Nur Text entfernen (alles außer Zahlen und Punkt)
+                raw = raw.replace(/[^0-9.]/g, '');
+                
+                ottoPrice = parseFloat(raw);
+            }
+
+            if (isNaN(ottoPrice)) ottoPrice = 0;
+            purchasePrice = Math.floor(ottoPrice * 0.45);
+            
+            document.getElementById('calc-otto').innerText = ottoPrice.toLocaleString('de-DE', {style:'currency', currency:'EUR'});
+            document.getElementById('calc-buy').innerText = purchasePrice.toLocaleString('de-DE', {style:'currency', currency:'EUR'});
+            document.getElementById('calc-sell-input').value = Math.floor(ottoPrice * 0.75);
+            
+            calculateProfit();
+            document.getElementById('upload-modal').classList.add('open');
+        }
+
+        function calculateProfit() {
+            const sell = parseFloat(document.getElementById('calc-sell-input').value) || 0;
+            const tax = sell - (sell / 1.19); 
+            const profit = (sell - tax) - purchasePrice;
+            document.getElementById('calc-tax').innerText = tax.toLocaleString('de-DE', {style:'currency', currency:'EUR'});
+            const pEl = document.getElementById('calc-profit');
+            pEl.innerText = profit.toLocaleString('de-DE', {style:'currency', currency:'EUR'});
+            pEl.className = profit > 0 ? 'profit-val' : 'profit-val loss';
+        }
+
+        function closeUploadModal() { document.getElementById('upload-modal').classList.remove('open'); }
+        function confirmUpload() {
+            if(currentProduct) {
+                currentProduct.targetPrice = document.getElementById('calc-sell-input').value;
+                socket.emit('upload-to-kleinanzeigen', currentProduct);
+                closeUploadModal();
+                alert("Bot gestartet! Bitte in Chrome prüfen.");
+            }
+        }
+    </script>
+</body>
+</html>

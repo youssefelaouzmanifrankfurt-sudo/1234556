@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>NeonLink Messenger</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/chat.css">
+</head>
+<body>
+
+<%- include('partials/nav') %>
+
+    <div class="main-layout">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="search-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-input" class="search-bar" placeholder="Suche..." autocomplete="off">
+                </div>
+                <button onclick="refreshAll()" class="btn-refresh" title="Neu laden">⟳</button>
+            </div>
+            <div class="conversation-list" id="conv-list">
+                <div style="padding:20px; text-align:center; color:#444;">Lade Chats...</div>
+            </div>
+            <div class="sidebar-footer">
+                <button id="btn-more-chats" onclick="loadMoreConversations()" class="btn-load-more-chats">⬇ Mehr Chats laden</button>
+            </div>
+        </div>
+
+        <div class="chat-area">
+            <div class="chat-topbar" id="chat-header" style="opacity: 0;">
+                <div>
+                    <h3 id="active-name" style="margin:0; font-size:1.1rem;">Name</h3>
+                    <span id="active-status" style="font-size:0.85rem; color:#666;">Anzeige</span>
+                </div>
+            </div>
+
+            <div class="messages-wrapper" id="msg-area">
+                <div style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#333;">
+                    <div style="font-size:4rem; margin-bottom:20px; opacity:0.2;">💬</div>
+                    <div>Wähle einen Chat aus der Liste</div>
+                </div>
+            </div>
+
+            <div class="input-wrapper" id="input-area" style="display: none;">
+                
+                <div class="quick-actions">
+                    <button class="qa-btn" onclick="insertTemplate('paypal')"><span>🅿️</span> PayPal</button>
+                    <button class="qa-btn" onclick="insertTemplate('bank')"><span>🏦</span> Bank</button>
+                    <button class="qa-btn" onclick="insertTemplate('contact')"><span>📍</span> Adresse</button>
+                </div>
+
+                <div class="input-row">
+                    <button class="btn-task" onclick="openTaskModal()" title="Aufgabe erstellen">📋</button>
+                    <input type="text" class="chat-input" id="msg-input" placeholder="Nachricht..." autocomplete="off">
+                    <button class="send-btn" onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="task-modal">
+        <div class="modal">
+            <h2>Zu Aufgaben hinzufügen</h2>
+            <input type="text" id="modal-task-text" class="task-input" placeholder="Was muss getan werden?">
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeTaskModal()">Abbrechen</button>
+                <button class="btn-save-task" onclick="saveTaskFromChat()">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/chat.js"></script>
+</body>
+</html>

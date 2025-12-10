@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>System & Einstellungen</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/settings.css">
+    <style>
+        .mode-card { border-left: 5px solid #6366f1; background: #f8fafc; }
+        .btn-ghost { background-color: #475569; }
+        .btn-debug { background-color: #6366f1; }
+        .status-badge { display:inline-block; padding: 4px 10px; border-radius:12px; font-weight:bold; font-size:0.9em; margin-left:10px;}
+        .status-ghost { background:#e2e8f0; color:#475569; }
+        .status-debug { background:#e0e7ff; color:#4338ca; }
+    </style>
+</head>
+<body>
+
+    <%- include('partials/nav') %>
+
+    <div class="container">
+        <h1>⚙️ System & Einstellungen</h1>
+
+        <div class="card mode-card">
+            <h2>🤖 Browser Steuerung</h2>
+            <p>Hier kannst du den Chrome-Browser sichtbar oder unsichtbar machen.</p>
+            
+            <div style="margin-bottom: 20px; font-size: 1.1em;">
+                Aktueller Status: <span id="browserStatusBadge" class="status-badge">Lädt...</span>
+            </div>
+        
+            <div style="display:flex; gap:15px; flex-wrap:wrap;">
+                <button onclick="setBrowserMode(false)" class="btn-ghost" style="flex:1; padding:12px; color:white; border:none; border-radius:6px; cursor:pointer;">
+                    👻 Geister-Modus (Unsichtbar)
+                    <br><small style="opacity:0.8">Für den normalen Betrieb</small>
+                </button>
+                <button onclick="setBrowserMode(true)" class="btn-debug" style="flex:1; padding:12px; color:white; border:none; border-radius:6px; cursor:pointer;">
+                    🖥️ Experten-Modus (Sichtbar)
+                    <br><small style="opacity:0.8">Zum Inserieren & Prüfen</small>
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>💬 Chat Assistent</h2>
+            <p>Texte für die Schnell-Buttons im Messenger.</p>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:25px;">
+                <div>
+                    <label>🅿️ PayPal Text:</label>
+                    <textarea id="chat-paypal" oninput="updateLocalChat()"></textarea>
+                </div>
+                <div>
+                    <label>🏦 Überweisung (IBAN):</label>
+                    <textarea id="chat-bank" oninput="updateLocalChat()"></textarea>
+                </div>
+                <div>
+                    <label>📍 Kontakt / Adresse:</label>
+                    <textarea id="chat-contact" oninput="updateLocalChat()"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🎨 Design Elemente</h2>
+            <p>Rahmen und Aufzählungszeichen für technische Daten.</p>
+            
+            <label>Rahmen / Überschrift (ASCII Art):</label>
+            <textarea id="design-prefix" oninput="updateLocalDesign()"></textarea>
+
+            <label>Listen-Symbol:</label>
+            <input type="text" id="design-bullet" oninput="updateLocalDesign()">
+
+            <hr>
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <label style="margin:0;">🔊 Benachrichtigungston:</label>
+                <button onclick="testSound()" style="background:#222; color:white; border:1px solid #333; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600; transition:0.2s;" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='#333'">
+                    ▶️ Sound Testen
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📝 Beschreibungstexte (Templates)</h2>
+            <p>Definiere hier, wie deine Anzeigen für die verschiedenen Plattformen aussehen sollen.</p>
+            
+            <div class="nav-tabs">
+                <div class="tab active" id="tab-Otto" onclick="switchTab('Otto')">Otto</div>
+                <div class="tab" id="tab-Idealo" onclick="switchTab('Idealo')">Idealo</div>
+                <div class="tab" id="tab-Default" onclick="switchTab('Default')">Standard</div>
+            </div>
+
+            <div class="tags">
+                <span class="tag" onclick="insertTag('(titel)')">+ Titel</span>
+                <span class="tag" onclick="insertTag('(beschreibung)')">+ Beschreibung</span>
+                <span class="tag" onclick="insertTag('(technischedaten)')">+ Technische Daten</span>
+                <span class="tag" onclick="insertTag('(preis)')">+ Preis</span>
+            </div>
+
+            <textarea id="template-editor" placeholder="Wähle oben einen Tab..." oninput="updateLocalTemplate()"></textarea>
+            <div id="status-msg"></div>
+            
+            <button class="btn-save" onclick="saveToServer()">💾 Alle Änderungen Speichern</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let localSettings = {
+            templates: { Otto: "", Idealo: "", Default: "" },
+            design: { techPrefix: "", techBullet: "" },
+            chat: { paypal: "", bank: "", contact: "" }
+        };
+        let activeTab = 'Otto';
+
+        // --- BROWSER STATUS LOGIK ---
+        function checkBrowserStatus() {
+            fetch('/api/browser/status')
+                .then(r => r.json())
+                .then(data => {
+                    const badge = document.getElementById('browserStatusBadge');
+                    badge.innerText = data.mode;
+                    if(data.mode.includes('Geister')) {
+                        badge.className = 'status-badge status-ghost';
+                    } else {
+                        badge.className = 'status-badge status-debug';
+                    }
+                });
+        }
+        
+        // Beim Laden Status holen
+        checkBrowserStatus();
+
+        function setBrowserMode(visible) {
+            const confirmMsg = visible 
+                ? "Experten-Modus aktivieren? Browser wird sichtbar neu gestartet." 
+                : "Geister-Modus aktivieren? Browser verschwindet in den Hintergrund.";
+            
+            if(!confirm(confirmMsg)) return;
+
+            const badge = document.getElementById('browserStatusBadge');
+            badge.innerText = "Schalte um... bitte warten (ca. 5s)";
+            badge.style.background = "#f59e0b";
+            badge.style.color = "white";
+
+            fetch('/api/browser/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ visible: visible })
+            })
+            .then(r => r.json())
+            .then(data => {
+                setTimeout(() => {
+                    checkBrowserStatus();
+                    alert("Modus erfolgreich gewechselt!");
+                }, 4000);
+            })
+            .catch(err => {
+                alert("Fehler: " + err);
+                checkBrowserStatus();
+            });
+        }
+
+        // --- EXISTIERENDE LOGIK ---
+        socket.emit('get-settings');
+        socket.on('update-settings', (data) => {
+            if(data) {
+                localSettings = data;
+                refreshUI();
+            }
+        });
+        function refreshUI() {
+            if(localSettings.design) {
+                document.getElementById('design-prefix').value = localSettings.design.techPrefix || "";
+                document.getElementById('design-bullet').value = localSettings.design.techBullet || "";
+            }
+            if(localSettings.chat) {
+                document.getElementById('chat-paypal').value = localSettings.chat.paypal || "";
+                document.getElementById('chat-bank').value = localSettings.chat.bank || "";
+                document.getElementById('chat-contact').value = localSettings.chat.contact || "";
+            }
+            if(localSettings.templates) {
+                document.getElementById('template-editor').value = localSettings.templates[activeTab] || "";
+            }
+        }
+
+        // LIVE UPDATES
+        function updateLocalTemplate() {
+            if (!localSettings.templates) localSettings.templates = {};
+            localSettings.templates[activeTab] = document.getElementById('template-editor').value;
+            document.getElementById('status-msg').innerText = "Änderung...";
+        }
+        
+        function updateLocalDesign() {
+            if (!localSettings.design) localSettings.design = {};
+            localSettings.design.techPrefix = document.getElementById('design-prefix').value;
+            localSettings.design.techBullet = document.getElementById('design-bullet').value;
+        }
+
+        function updateLocalChat() {
+            if (!localSettings.chat) localSettings.chat = {};
+            localSettings.chat.paypal = document.getElementById('chat-paypal').value;
+            localSettings.chat.bank = document.getElementById('chat-bank').value;
+            localSettings.chat.contact = document.getElementById('chat-contact').value;
+        }
+
+        // ACTIONS
+        function switchTab(newTab) {
+            updateLocalTemplate();
+            activeTab = newTab;
+            
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + newTab).classList.add('active');
+
+            document.getElementById('template-editor').value = localSettings.templates[activeTab] || "";
+        }
+
+        function insertTag(tag) {
+            const area = document.getElementById('template-editor');
+            const start = area.selectionStart;
+            const end = area.selectionEnd;
+            const text = area.value;
+            area.value = text.substring(0, start) + tag + text.substring(end);
+            area.selectionStart = area.selectionEnd = start + tag.length;
+            area.focus();
+            updateLocalTemplate();
+        }
+
+        function saveToServer() {
+            updateLocalTemplate();
+            updateLocalDesign();
+            updateLocalChat();
+
+            socket.emit('save-settings', localSettings);
+            
+            const btn = document.querySelector('.btn-save');
+            btn.innerText = "✅ Gespeichert";
+            document.getElementById('status-msg').innerText = "Gespeichert.";
+            setTimeout(() => btn.innerText = "💾 Alle Änderungen Speichern", 2000);
+        }
+
+        function testSound() {
+            const audio = new Audio("/sounds/notification.mp3");
+            audio.play().catch(e => alert("Autoplay blockiert! Klicke erst einmal auf die Seite."));
+        }
+    </script>
+</body>
+</html>

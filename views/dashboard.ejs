@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>NeonLink Dashboard</title>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    
+    <style>
+        .search-container { margin: 20px 0; }
+        #inp-search {
+            width: 100%;
+            padding: 15px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 12px;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        #inp-search:focus { border-color: #10b981; }
+    </style>
+</head>
+<body>
+
+    <%- include('partials/nav') %>
+
+    <div class="container">
+        
+        <div class="welcome-section">
+            <h1>Willkommen zurück, Chef.</h1>
+            <p>Hier ist der aktuelle Status deines Kleinanzeigen-Imperiums.</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Aktive Anzeigen</div>
+                <div class="stat-value" id="stat-total-ads">0</div>
+                <div class="stat-diff">In der Datenbank</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Gesamt Besucher</div>
+                <div class="stat-value" id="stat-total-views">0</div>
+                <div class="stat-diff">Seit letztem Scan</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Offene Aufgaben</div>
+                <div class="stat-value" id="stat-open-tasks" style="color:#f59e0b;">0</div>
+                <div class="stat-diff">Zu erledigen</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Chats</div>
+                <div class="stat-value" id="stat-total-msgs">0</div>
+                <div class="stat-diff">Geladen</div>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <button id="btn-scan" class="action-btn primary" onclick="window.triggerScan()">
+                <span>🚀</span> Scan Starten & zur DB
+            </button>
+            <a href="/chat" class="action-btn">
+                <span>💬</span> Zum Messenger
+            </a>
+            <a href="/tracking" class="action-btn">
+                <span>📈</span> Tracking prüfen
+            </a>
+        </div>
+
+        <div style="margin-bottom: 40px; padding: 25px; background: #111; border: 1px solid #222; border-radius: 16px;">
+            <h3 style="margin-top:0; margin-bottom:20px; color:#eee; font-size:1.1rem;">📈 Performance Trend (14 Tage)</h3>
+            <div style="height: 300px; width:100%;">
+                <canvas id="performanceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="section-title">🔥 Anzeigen Übersicht</div>
+        
+        <div class="search-container">
+            <input type="text" id="inp-search" placeholder="🔍 Suche nach Titel, ID, Preis oder 'Gelöscht'...">
+        </div>
+        
+        <div class="top-list" id="top-list">
+            <div style="padding:20px; color:#666; text-align:center;">Lade Daten...</div>
+        </div>
+
+    </div>
+
+    <script src="/js/dashboard/ui.js"></script>
+    <script src="/js/dashboard/charts.js"></script>
+    <script src="/js/dashboard/main.js"></script>
+</body>
+</html>
