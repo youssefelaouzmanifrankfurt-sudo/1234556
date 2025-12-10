@@ -1,5 +1,6 @@
 // src/services/inventory/actions.js
 const store = require('./store');
+const { toCents, fromCentsToEuro } = require('../../utils/formatter'); // [ARCHITECT] Safe Math
 
 // Lager Status setzen
 const markAsInStock = (adId, stockLocation) => {
@@ -55,10 +56,20 @@ const addFromStock = (stockItem) => {
     const exists = db.find(i => i.title === stockItem.title);
     if (exists) return false; 
 
+    // [ARCHITECT FIX] Sichere Preisberechnung
+    // 1. Hole Cents (Integer)
+    const ekCents = toCents(stockItem.purchasePrice);
+    // 2. Kalkuliere VK (Faktor 2) als Integer
+    const vkCents = ekCents * 2;
+    // 3. Formatiere zurück zu String ("28.20")
+    // Falls dein Frontend zwingend das " €" Suffix braucht, fügen wir es an.
+    // Sauberer wäre es, Währung und Wert getrennt zu speichern, aber wir bleiben kompatibel.
+    const priceStr = ekCents > 0 ? fromCentsToEuro(vkCents) + " €" : "VB";
+
     const newAd = {
         id: "DRAFT-" + Date.now(),
         title: stockItem.title,
-        price: stockItem.purchasePrice ? (parseFloat(stockItem.purchasePrice) * 2) + " €" : "VB",
+        price: priceStr,
         description: "Aus Lagerbestand importiert. Bitte bearbeiten.",
         images: [],
         uploadDate: new Date().toLocaleDateString('de-DE'),
@@ -67,6 +78,7 @@ const addFromStock = (stockItem) => {
         views: 0,
         favorites: 0,
         inStock: true,
+        // Fallback für Location, falls null
         internalNote: `Lagerort: ${stockItem.location || 'Unbekannt'} [LAGER]`
     };
 

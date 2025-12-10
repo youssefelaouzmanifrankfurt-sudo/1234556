@@ -2,6 +2,16 @@
 const socket = io();
 let allItems = [];
 
+// [JEFF HELPER] 
+const formatPriceDE = (val) => {
+    if (val === undefined || val === null) return "-";
+    // Entfernt " €" falls schon vorhanden, parst float, formatiert neu
+    let clean = val.toString().replace(' €', '').replace(',', '.');
+    let num = parseFloat(clean);
+    if(isNaN(num)) return val;
+    return num.toFixed(2).replace('.', ',') + " €";
+};
+
 // --- INIT ---
 socket.on('connect', () => {
     socket.emit('get-db-products');
@@ -39,148 +49,100 @@ socket.on('scrape-progress', (data) => {
 function renderGrid(items) {
     const grid = document.getElementById('db-grid');
     grid.innerHTML = '';
-
-    if (!items || items.length === 0) {
-        grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; opacity:0.5;">Keine Daten gefunden.</div>';
-        return;
-    }
+    
+    // Sortierung
+    const sortMode = document.getElementById('sort-order').value;
+    items.sort((a,b) => {
+        if(sortMode === 'views_desc') return (b.views||0) - (a.views||0);
+        if(sortMode === 'date_asc') return new Date(a.uploadDate) - new Date(b.uploadDate);
+        return new Date(b.uploadDate) - new Date(a.uploadDate); // Default: Newest first
+    });
 
     items.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'db-card';
+        let statusColor = '#94a3b8';
+        let statusLabel = 'Inaktiv';
         
-        let statusBadge = '';
-        if (item.status === 'ACTIVE') statusBadge = '<span class="badge badge-active">🟢 Aktiv</span>';
-        else if (item.status === 'DRAFT') statusBadge = '<span class="badge badge-draft">🟡 Entwurf</span>';
-        else if (item.status === 'PAUSED') statusBadge = '<span class="badge badge-draft" style="color:#fbbf24; border-color:#fbbf24;">🟠 Pausiert</span>';
-        else statusBadge = '<span class="badge badge-deleted">🔴 Gelöscht</span>';
-
-        let stockBadge = '';
+        if (item.status === 'ACTIVE') { statusColor = '#10b981'; statusLabel = 'Aktiv'; }
+        if (item.status === 'PAUSED') { statusColor = '#f59e0b'; statusLabel = 'Pausiert'; }
+        if (item.status === 'DRAFT') { statusColor = '#eab308'; statusLabel = 'Entwurf'; }
+        
         if (item.inStock) {
-            stockBadge = `<span class="badge badge-stock">🏠 Im Lager</span>`;
+            statusLabel += ' <span style="color:#3b82f6; font-size:0.8rem;">[LAGER]</span>';
         }
 
-        let imgUrl = '/img/placeholder.png';
-        if (item.images && item.images.length > 0) imgUrl = item.images[0];
-        else if (item.img) imgUrl = item.img;
-
-        card.innerHTML = `
-            <div class="card-top">
-                <img src="${imgUrl}" class="card-img" onerror="this.src='/img/placeholder.png'">
-                <div class="card-info">
-                    <div class="card-title" title="${item.title}">${item.title}</div>
-                    <div class="card-meta">
-                        ${statusBadge}
-                        ${stockBadge}
-                        <span style="margin-left:auto; color:#94a3b8;">${item.price || 'VB'}</span>
-                    </div>
-                    <div style="font-size:0.75rem; color:#666; margin-top:5px;">ID: ${item.id}</div>
-                </div>
-            </div>
-            <div class="card-stats">
-                <span>👁️ ${item.views || 0}</span>
-                <span>❤️ ${item.favorites || 0}</span>
-                <span style="margin-left:auto;">📅 ${item.uploadDate || '-'}</span>
-            </div>
-            <div class="card-actions">
-                <button class="btn-icon" onclick="reUpItem('${item.id}')" title="Re-Upload (Duplizieren)">🚀</button>
-                
-                <button class="btn-icon" onclick="showQR('${item.id}', '${item.title}')" title="QR Code">📱</button>
-                <button class="btn-icon" onclick="openLink('${item.url}')" title="Öffnen">🌍</button>
-                <button class="btn-icon" onclick="editItem('${item.id}')" title="Bearbeiten">✏️</button>
-                <button class="btn-icon btn-del" onclick="deleteItem('${item.id}')" title="Löschen">🗑</button>
-            </div>
-        `;
-        grid.appendChild(card);
-    });
-}
-
-// --- FILTER LOGIK ---
-function filterAds() {
-    const term = document.getElementById('inp-search').value.toLowerCase();
-    const status = document.getElementById('filter-status').value;
-    const timeFilter = document.getElementById('filter-time').value;
-    
-    // Datum Berechnung (Heute)
-    const now = new Date();
-    const oneMonth = 30 * 24 * 60 * 60 * 1000;
-
-    let filtered = allItems.filter(item => {
-        // 1. Text Suche
-        const matchText = (item.title||"").toLowerCase().includes(term) || 
-                          (item.id||"").includes(term) || 
-                          (item.internalNote||"").toLowerCase().includes(term);
+        const imgSrc = (item.images && item.images.length > 0) ? item.images[0] : '/img/placeholder.png';
         
-        // 2. Status Filter
-        let matchStatus = true;
-        if(status === 'active') matchStatus = (item.status === 'ACTIVE');
-        if(status === 'paused') matchStatus = (item.status === 'PAUSED');
-        if(status === 'draft') matchStatus = (item.status === 'DRAFT');
-        if(status === 'deleted') matchStatus = (item.status === 'DELETED');
-        if(status === 'stock') matchStatus = (item.inStock === true);
+        // [JEFF FIX] Preis Anzeige
+        const priceDisplay = formatPriceDE(item.price);
 
-        // 3. Zeit Filter
-        let matchTime = true;
-        if (timeFilter !== 'all') {
-            const itemDate = parseDate(item.uploadDate);
-            if (itemDate === 0) {
-                matchTime = false;
-            } else {
-                const diff = now.getTime() - itemDate;
-                if (timeFilter === '1m') matchTime = diff > oneMonth;
-                if (timeFilter === '2m') matchTime = diff > (oneMonth * 2);
-                if (timeFilter === '3m') matchTime = diff > (oneMonth * 3);
-            }
-        }
-
-        return matchText && matchStatus && matchTime;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><img src="${imgSrc}" class="thumb"></td>
+            <td>
+                <div style="font-weight:bold;">${item.title}</div>
+                <div style="font-size:0.8rem; color:#888;">${item.id}</div>
+            </td>
+            <td style="font-weight:bold; color:#e2e8f0;">${priceDisplay}</td>
+            <td><span style="color:${statusColor}; font-weight:bold;">${statusLabel}</span></td>
+            <td>
+                <button class="btn btn-mini" onclick="editItem('${item.id}')">✏️</button>
+                <button class="btn btn-mini" onclick="showQR('${item.id}', '${item.title}')">📱</button>
+            </td>
+        `;
+        grid.appendChild(row);
     });
-
-    sortAds(filtered);
-}
-
-function sortAds(items = []) {
-    const sortVal = document.getElementById('sort-order').value;
-    items.sort((a, b) => {
-        if(sortVal === 'views_desc') return (parseInt(b.views)||0) - (parseInt(a.views)||0);
-        const dateA = parseDate(a.uploadDate);
-        const dateB = parseDate(b.uploadDate);
-        if(sortVal === 'date_asc') return dateA - dateB;
-        return dateB - dateA;
-    });
-    renderGrid(items);
-}
-
-function parseDate(dateStr) {
-    if(!dateStr || typeof dateStr !== 'string') return 0;
-    const parts = dateStr.split('.');
-    if(parts.length === 3) return new Date(parts[2], parts[1]-1, parts[0]).getTime();
-    return 0;
 }
 
 function updateStats(items) {
-    const total = items.length;
-    const active = items.filter(i => i.status === 'ACTIVE').length;
-    if(document.getElementById('stat-total')) document.getElementById('stat-total').innerText = total;
-    if(document.getElementById('stat-active')) document.getElementById('stat-active').innerText = active;
+    document.getElementById('stat-total').innerText = items.length;
+    document.getElementById('stat-active').innerText = items.filter(i => i.status === 'ACTIVE').length;
 }
 
-// --- ACTIONS ---
-window.startScrape = () => { if(confirm('Scan starten?')) socket.emit('start-db-scrape'); };
-window.deleteInactiveAds = () => { if(confirm('Alle inaktiven löschen?')) socket.emit('delete-inactive-ads'); };
-window.deleteItem = (id) => { if(confirm('Löschen?')) socket.emit('delete-db-item', id); };
+// FILTER & SORT
+window.filterAds = () => {
+    const search = document.getElementById('inp-search').value.toLowerCase();
+    const status = document.getElementById('filter-status').value;
+    const time = document.getElementById('filter-time').value;
 
-// RE-UPLOAD (Duplizieren)
-window.reUpItem = (id) => { 
-    if(confirm('Anzeige als neuen Entwurf duplizieren?')) {
-        const ip = prompt("Proxy IP (optional, sonst leer lassen):", ""); 
-        socket.emit('re-up-item', { id, targetIp: ip }); 
+    let filtered = allItems.filter(i => {
+        if (search && !i.title.toLowerCase().includes(search)) return false;
+        
+        if (status === 'active' && i.status !== 'ACTIVE') return false;
+        if (status === 'paused' && i.status !== 'PAUSED') return false;
+        if (status === 'draft' && i.status !== 'DRAFT') return false;
+        if (status === 'deleted' && i.status !== 'DELETED') return false;
+        if (status === 'stock' && !i.inStock) return false;
+
+        if (time !== 'all') {
+            const date = new Date(i.uploadDate);
+            const now = new Date();
+            const diffMonths = (now - date) / (1000 * 60 * 60 * 24 * 30);
+            if (time === '1m' && diffMonths < 1) return false;
+            if (time === '2m' && diffMonths < 2) return false;
+            if (time === '3m' && diffMonths < 3) return false;
+        }
+        return true;
+    });
+    renderGrid(filtered);
+};
+
+window.sortAds = () => filterAds(); // Trigger re-render with current filter
+
+// ACTIONS
+window.startScrape = () => {
+    if(confirm("Kompletten Scan starten? (Dauert einige Minuten)")) {
+        socket.emit('start-manual-scan');
     }
 };
 
-window.openLink = (url) => { if(url && url.startsWith('http')) window.open(url, '_blank'); else alert("Kein Link."); };
+window.deleteInactiveAds = () => {
+    if(confirm("Alle gelöschten/inaktiven Anzeigen entfernen?")) {
+        socket.emit('cleanup-db');
+    }
+};
 
-// EDIT MODAL
+window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; };
+
 window.editItem = (id) => {
     const item = allItems.find(i => i.id === id);
     if(!item) return;
@@ -190,6 +152,7 @@ window.editItem = (id) => {
     document.getElementById('edit-note').value = item.internalNote || "";
     document.getElementById('edit-modal').style.display = 'flex';
 };
+
 window.saveEdit = () => {
     const id = document.getElementById('edit-id').value;
     socket.emit('update-item-details', {
@@ -201,17 +164,18 @@ window.saveEdit = () => {
     closeModal('edit-modal');
 };
 
-// QR
 window.showQR = (id, title) => {
     const item = allItems.find(i => i.id === id);
     if(!item) return;
     const container = document.getElementById('qr-container');
     container.innerHTML = '';
+    // Falls keine URL da ist, generieren wir eine Fake-URL oder nutzen die ID
     const url = item.url || `https://www.kleinanzeigen.de/s-anzeige/${id}`;
+    
     const qrImg = document.createElement('img');
     qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
     container.appendChild(qrImg);
+    
     document.getElementById('qr-text').innerText = title;
     document.getElementById('qr-modal').style.display = 'flex';
 };
-window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; };
