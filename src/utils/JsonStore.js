@@ -1,16 +1,16 @@
 // src/utils/JsonStore.js
 const fs = require('fs');
 const path = require('path');
-// Falls du logger.js hast, binden wir es ein, sonst nutzen wir console
-const logger = require('./logger'); 
+const logger = require('./logger'); // Logger eingebunden!
 
 class JsonStore {
     constructor(filePath, defaultData = []) {
         this.filePath = filePath;
+        // Temp Datei im gleichen Ordner für atomares Rename
+        this.tempFilePath = `${filePath}.tmp`;
         this.data = defaultData;
         this.isLoaded = false;
         
-        // Initial laden
         this.load();
     }
 
@@ -18,15 +18,13 @@ class JsonStore {
         try {
             if (fs.existsSync(this.filePath)) {
                 const raw = fs.readFileSync(this.filePath, 'utf-8');
-                // Schutz gegen leere Dateien
                 this.data = raw ? JSON.parse(raw) : [];
             } else {
                 this.data = [];
             }
             this.isLoaded = true;
-            // console.log(`[STORE] Geladen: ${path.basename(this.filePath)} (${this.data.length} Items)`);
         } catch (e) {
-            console.error(`[STORE] Fehler beim Laden von ${this.filePath}: ${e.message}`);
+            logger.log('error', `[STORE] CRITICAL: Konnte ${this.filePath} nicht lesen: ${e.message}`);
             this.data = [];
         }
         return this.data;
@@ -39,18 +37,24 @@ class JsonStore {
 
     save() {
         try {
-            // Schreiboperation: Synchron, um Race Conditions auf File-Level zu minimieren
-            // (Da wir Node.js Single Threaded sind, blockiert dies kurz, aber verhindert
-            // das Überschreiben durch parallele Schreibvorgänge, da wir 'this.data' als Source of Truth nutzen)
-            fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2));
+            const jsonString = JSON.stringify(this.data, null, 2);
+            
+            // [ARCHITECT FIX] Atomic Write Pattern
+            // 1. Schreibe in temporäre Datei (blockierend ist hier OK für Datensicherheit)
+            fs.writeFileSync(this.tempFilePath, jsonString);
+            
+            // 2. Atomares Umbenennen (POSIX Standard)
+            // Wenn der Server hier crasht, ist entweder die alte ODER die neue Datei da. Nie eine halbe.
+            fs.renameSync(this.tempFilePath, this.filePath);
+            
             return true;
         } catch (e) {
-            console.error(`[STORE] Speicherfehler in ${this.filePath}: ${e.message}`);
+            logger.log('error', `[STORE] Speicherfehler (Atomic) in ${this.filePath}: ${e.message}`);
+            // Versuch Cleanup bei Fehler
+            try { if(fs.existsSync(this.tempFilePath)) fs.unlinkSync(this.tempFilePath); } catch(ex){}
             return false;
         }
     }
-
-    // --- Generische CRUD Operationen ---
 
     add(item) {
         this.data.push(item);
@@ -61,11 +65,8 @@ class JsonStore {
     update(id, updateFn) {
         const index = this.data.findIndex(i => i.id === id);
         if (index !== -1) {
-            // Wir übergeben eine KOPIE des Items an die Update-Funktion
             const itemCopy = { ...this.data[index] };
             const updatedItem = updateFn(itemCopy);
-            
-            // Zurückschreiben
             this.data[index] = updatedItem || itemCopy;
             this.save();
             return this.data[index];

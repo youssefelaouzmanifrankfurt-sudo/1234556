@@ -1,29 +1,27 @@
 // src/services/stockService.js
 const storage = require('../utils/storage');
 const logger = require('../utils/logger');
-const JsonStore = require('../utils/JsonStore'); // Unser neuer Store
+const JsonStore = require('../utils/JsonStore'); 
 const { findBestMatch } = require('../utils/similarity');
+// [ARCHITECT] Wir brauchen den Formatter für sichere Preise
+const { toCents, fromCentsToEuro } = require('../utils/formatter'); 
 
 class StockService extends JsonStore {
     constructor() {
-        // Wir initialisieren den Store mit dem Pfad aus storage.js
+        // Pfad zur Stock-Datei laden
         super(storage.getStockPath());
-        logger.log('info', "[SERVICE] StockService gestartet (In-Memory Mode).");
+        logger.log('info', "[SERVICE] StockService gestartet.");
     }
-    
-    // Überschreibt die load Methode des Parent, falls wir Custom Logic bräuchten
-    // Aber eigentlich reicht die Parent-Logik.
-    // getAll() kommt jetzt automatisch vom JsonStore (Parent).
 
     findInStock(name) {
         if(!name) return null;
-        const list = this.getAll(); // Zugriff auf RAM
+        const list = this.getAll();
         
-        // 1. Exakter SKU Match
+        // 1. Exakter SKU Match (Case Insensitive)
         const skuMatch = list.find(i => i.sku && i.sku.toLowerCase() === name.toLowerCase());
         if (skuMatch) return skuMatch;
 
-        // 2. Fuzzy Match
+        // 2. Fuzzy Match (Toleranz für Tippfehler)
         const matchResult = findBestMatch(name, list);
         if (matchResult.item && matchResult.score > 0.80) {
             return matchResult.item;
@@ -33,89 +31,76 @@ class StockService extends JsonStore {
 
     checkScanMatch(name) { return this.findInStock(name); }
 
-    incrementQuantity(id) {
-        // Nutzt die update() Methode des JsonStore für sicheres Schreiben
-        this.update(id, (item) => {
-            item.quantity = (parseInt(item.quantity) || 0) + 1;
-            item.lastScanned = new Date().toLocaleString();
-            logger.log('success', `Bestand erhöht: ${item.title} (+1)`);
-            return item;
-        });
-        return this.getAll();
-    }
-
-    createNewItem(name, details = {}) {
+    createNewItem(title, data = {}) {
+        // [HYGIENE] Daten bereinigen bevor sie in die DB kommen
         const newItem = {
-            id: "STOCK-" + Date.now(),
-            title: name,
-            quantity: parseInt(details.quantity) || 1,
-            location: details.location || "Lager",
-            
-            purchasePrice: parseFloat(details.purchasePrice) || 0,
-            marketPrice: parseFloat(details.marketPrice) || 0,
-            
-            sku: details.sku || ("SKU-" + Date.now()),
-            minQuantity: parseInt(details.minQuantity) || 0,
-            
-            sourceUrl: details.sourceUrl || "",
-            sourceName: details.sourceName || "",
-            
-            linkedAdId: details.linkedAdId || null,
-            image: details.image || null,
-            
-            scannedAt: new Date().toLocaleString(),
-            lastPriceCheck: details.lastPriceCheck || null
+            ...data,
+            id: data.id || "STOCK-" + Date.now(), // Fallback ID
+            title: title,
+            // WICHTIG: Preise via Formatter normalisieren ("19,99" -> "19.99")
+            purchasePrice: fromCentsToEuro(toCents(data.purchasePrice)),
+            marketPrice: fromCentsToEuro(toCents(data.marketPrice)),
+            quantity: parseInt(data.quantity) || 0,
+            createdAt: new Date().toISOString()
         };
-        
-        // add() speichert automatisch
-        this.add(newItem);
-        logger.log('info', `Neu im Lager: ${name}`);
-        return this.getAll();
-    }
-
-    linkToAd(stockId, adId, adImage) {
-        let success = false;
-        this.update(stockId, (item) => {
-            item.linkedAdId = adId;
-            if(adImage) item.image = adImage;
-            success = true;
-            return item;
-        });
-        return success;
+        return this.add(newItem);
     }
 
     updateDetails(id, data) {
         this.update(id, (item) => {
             if (data.title) item.title = data.title;
             if (data.location) item.location = data.location;
-            if (data.purchasePrice) item.purchasePrice = parseFloat(data.purchasePrice);
-            if (data.quantity) item.quantity = parseInt(data.quantity);
             
+            // [HYGIENE] Float-Parsing entfernt! Wir nutzen den sicheren Formatter.
+            if (data.purchasePrice !== undefined) {
+                 item.purchasePrice = fromCentsToEuro(toCents(data.purchasePrice));
+            }
+            if (data.marketPrice !== undefined) {
+                item.marketPrice = fromCentsToEuro(toCents(data.marketPrice));
+            }
+
+            if (data.quantity !== undefined) item.quantity = parseInt(data.quantity);
             if (data.sku) item.sku = data.sku;
-            if (data.marketPrice) item.marketPrice = data.marketPrice;
             if (data.sourceUrl) item.sourceUrl = data.sourceUrl;
             if (data.sourceName) item.sourceName = data.sourceName;
             
             if (data.linkedAdId !== undefined) item.linkedAdId = data.linkedAdId;
             if (data.image !== undefined) item.image = data.image;
+            
+            // Tracking Update
+            item.updatedAt = new Date().toISOString();
+            
             return item;
         });
+        // Socket Writer erwartet die komplette Liste zurück
         return this.getAll();
     }
 
     updateQuantity(id, delta) {
         this.update(id, (item) => {
-            item.quantity = (parseInt(item.quantity) || 0) + delta;
-            if (item.quantity < 0) item.quantity = 0;
+            const current = parseInt(item.quantity) || 0;
+            let newVal = current + delta;
+            // Keine negativen Lagerbestände
+            if (newVal < 0) newVal = 0;
+            item.quantity = newVal;
             return item;
         });
         return this.getAll();
     }
 
-    // delete ist bereits im Parent (JsonStore) implementiert,
-    // aber wir behalten die return-Signatur (Boolean vs List) im Auge.
-    // JsonStore.delete gibt true/false zurück.
-    // Dein alter Code gab true zurück. Das passt.
+    incrementQuantity(id) {
+        return this.updateQuantity(id, 1);
+    }
+    
+    linkToAd(stockId, adId, adImage) {
+        this.update(stockId, (item) => {
+            item.linkedAdId = adId;
+            if (adImage) item.image = adImage;
+            return item;
+        });
+        return true;
+    }
 }
 
+// Singleton Export (Wie vorher)
 module.exports = new StockService();

@@ -2,24 +2,24 @@
 const ottoScraper = require('../scrapers/ottoScraper');
 const idealoScraper = require('../scrapers/idealoScraper');
 const logger = require('../utils/logger');
-
-// Helper: Preis bereinigen (aus "19,99 €" mach 19.99)
-function parsePrice(str) {
-    if (typeof str === 'number') return str;
-    if (!str) return 0;
-    return parseFloat(str.replace(/[^0-9,]/g, '').replace(',', '.')) || 0;
-}
+const { toCents, fromCentsToEuro } = require('../utils/formatter');
 
 // Helper: Ergebnisse einheitlich formatieren
 function formatResults(list, source) {
     if (!list || !Array.isArray(list)) return [];
-    return list.slice(0, 3).map(item => ({
-        title: item.title,
-        price: parsePrice(item.price),
-        image: item.img || item.image,
-        url: item.url,
-        source: source
-    }));
+    
+    return list.slice(0, 3).map(item => {
+        // [HYGIENE] Wir holen uns die Cents, um sicher zu sein, dass es eine Zahl ist
+        const cents = toCents(item.price);
+        return {
+            title: item.title,
+            price: fromCentsToEuro(cents), // Einheitliches String-Format für Frontend
+            priceValue: cents / 100, // Float für Sortierung (falls nötig)
+            image: item.img || item.image,
+            url: item.url,
+            source: source
+        };
+    });
 }
 
 async function searchMarketPrices(query) {
@@ -29,8 +29,14 @@ async function searchMarketPrices(query) {
 
     // Parallel suchen für Geschwindigkeit
     const [rOtto, rIdealo] = await Promise.all([
-        ottoScraper.searchOtto(query).catch(e => []),
-        idealoScraper.searchIdealo(query).catch(e => [])
+        ottoScraper.searchOtto(query).catch(e => {
+            logger.log('error', `Otto Fehler: ${e.message}`); 
+            return [];
+        }),
+        idealoScraper.searchIdealo(query).catch(e => {
+            logger.log('error', `Idealo Fehler: ${e.message}`);
+            return [];
+        })
     ]);
 
     let allResults = [];

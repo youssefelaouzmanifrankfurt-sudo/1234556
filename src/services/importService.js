@@ -1,23 +1,15 @@
 // src/services/importService.js
 const storage = require('../utils/storage');
 const ottoScraper = require('../scrapers/ottoScraper');
-const amazonScraper = require('../scrapers/amazonScraper'); // Amazon hinzufügen
+const amazonScraper = require('../scrapers/amazonScraper');
 const logger = require('../utils/logger');
+const { toCents, fromCentsToEuro } = require('../utils/formatter'); // NEU
 
 // Konfiguration
+// 2.2 als Integer-Multiplikator behandeln (220%) oder math library nutzen.
+// Hier simpel: Wir arbeiten mit Cents.
 const PRICE_FACTOR = 2.2; 
 
-// Helper: Preis sicher parsen (egal ob "12.99" oder "12,99")
-function parsePrice(input) {
-    if (!input) return 0;
-    // Entferne alles außer Zahlen, Punkt und Komma
-    let clean = String(input).replace(/[^0-9.,]/g, '');
-    // Ersetze Komma durch Punkt für JS Math
-    clean = clean.replace(',', '.');
-    return parseFloat(clean) || 0;
-}
-
-// Strategie-Wähler: Welcher Scraper ist zuständig?
 const SCRAPERS = [
     { id: 'otto', check: (url) => url.includes('otto.de'), scraper: ottoScraper.scrapeOttoDetails },
     { id: 'amazon', check: (url) => url.includes('amazon'), scraper: amazonScraper.scrapeAmazonDetails }
@@ -35,33 +27,44 @@ async function createImportFromStock(stockItem) {
     // 1. Externen Scraper finden und ausführen
     if (stockItem.sourceUrl) {
         const handler = SCRAPERS.find(s => s.check(stockItem.sourceUrl));
-        
         if (handler) {
-            logger.log('info', `🔎 Erkannt: ${handler.id.toUpperCase()} - Starte Live-Scrape...`);
+            // ... (Logging und Scraping Logik bleibt gleich, Fehlerbehandlung ist ok) ...
             try {
                 const details = await handler.scraper(stockItem.sourceUrl);
                 if (details) {
+                     // Defensive Kopie der Daten
                     if (details.description) description = details.description;
-                    if (details.images && details.images.length > 0) images = details.images;
+                    if (Array.isArray(details.images) && details.images.length > 0) images = details.images;
                     sourceName += ` (${handler.id})`;
                 }
             } catch (e) {
-                logger.log('error', `Fehler beim ${handler.id}-Scrape: ` + e.message);
+                 logger.log('error', `Fehler beim ${handler.id}-Scrape: ` + e.message);
             }
         }
     }
 
-    // 2. Preis berechnen (Sicherer Parse)
-    const ekPrice = parsePrice(stockItem.purchasePrice);
-    const vkPrice = ekPrice > 0 ? (ekPrice * PRICE_FACTOR).toFixed(2) : "VB";
+    // 2. Preisberechnung (SAFE MODE)
+    // Wir wandeln ALLES erst in Cents um.
+    const ekCents = toCents(stockItem.purchasePrice);
+    
+    // Berechnung: Cents * Faktor. Ergebnis runden (da 2.2 Brüche erzeugt).
+    const vkCents = Math.round(ekCents * PRICE_FACTOR);
+    
+    // Rückwandlung für die DB/UI (wenn das System Strings erwartet)
+    // Wenn das System '19.99' (mit Punkt) erwartet, nutzen wir toFixed(2).
+    // Wenn es deutsche UI Strings will '19,99', nutzen wir unsere Helper.
+    // Basierend auf deinem Code returnst du Strings. Ich nehme Standard JS '19.99' für DB.
+    
+    const vkPrice = ekCents > 0 ? (vkCents / 100).toFixed(2) : "VB";
+    const purchasePriceClean = (ekCents / 100).toFixed(2);
 
     // 3. Import-Objekt bauen
     const newImport = {
         id: "IMP-" + Date.now(),
-        title: stockItem.title,
+        title: stockItem.title || "Unbekanntes Produkt", // Fallback
         description: description,
         price: vkPrice,
-        purchasePrice: ekPrice, // Auch EK speichern für Tracking
+        purchasePrice: purchasePriceClean,
         images: images,
         source: sourceName,
         url: stockItem.sourceUrl || "",
@@ -77,6 +80,4 @@ async function createImportFromStock(stockItem) {
     return newImport;
 }
 
-module.exports = {
-    createImportFromStock
-};
+module.exports = { createImportFromStock };
